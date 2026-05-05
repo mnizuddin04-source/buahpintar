@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🍎 BuahPintar — Belajar Mengenal Buah</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@400;600;700;800&display=swap');
+
+  :root {
+    --orange: #FF6B35;
+    --green: #2DC653;
+    --yellow: #FFD60A;
+    --red: #FF4444;
+    --purple: #7B2FBE;
+    --teal: #00B4D8;
+    --bg: #FFF8F0;
+    --card: #FFFFFF;
+    --text: #1A1A2E;
+    --muted: #8B8BA7;
+    --border: #F0E8DD;
+    --shadow: 0 4px 20px rgba(255,107,53,0.12);
+    --radius: 18px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* DECORATIVE BG */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -100px; right: -100px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,214,10,0.15) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -80px; left: -80px;
+    width: 250px; height: 250px;
+    background: radial-gradient(circle, rgba(45,198,83,0.12) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* HEADER */
+  .app-header {
+    background: linear-gradient(135deg, var(--orange) 0%, #FF8C42 100%);
+    padding: 16px 20px 20px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 4px 20px rgba(255,107,53,0.3);
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .app-logo { font-family: 'Baloo 2', cursive; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .app-logo span { color: var(--yellow); }
+  .header-status {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.2); border-radius: 20px;
+    padding: 4px 10px; font-size: 12px; color: #fff; font-weight: 600;
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); animation: pulse 1.5s infinite; }
+  .status-dot.offline { background: rgba(255,255,255,0.4); animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.3)} }
+
+  .header-sub { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 600; }
+
+  /* TABS */
+  .tabs {
+    display: flex; background: #fff; border-bottom: 2px solid var(--border);
+    position: sticky; top: 72px; z-index: 99;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex: 1; min-width: 70px;
+    padding: 12px 6px 10px;
+    background: none; border: none; cursor: pointer;
+    font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+    color: var(--muted); transition: all 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    position: relative;
+  }
+  .tab-btn .tab-icon { font-size: 20px; }
+  .tab-btn.active { color: var(--orange); }
+  .tab-btn.active::after {
+    content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+    height: 2px; background: var(--orange); border-radius: 2px 2px 0 0;
+  }
+  .tab-badge {
+    position: absolute; top: 8px; right: calc(50% - 18px);
+    background: var(--red); color: #fff; font-size: 9px; font-weight: 800;
+    min-width: 16px; height: 16px; border-radius: 8px; padding: 0 4px;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+  }
+
+  /* PAGES */
+  .page { display: none; padding: 16px; animation: fadeIn 0.25s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* CARDS */
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+    border: 1.5px solid var(--border); position: relative; overflow: hidden;
+  }
+  .card-title {
+    font-family: 'Baloo 2', cursive; font-size: 15px; font-weight: 700;
+    color: var(--text); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* SESSION CARD */
+  .session-hero {
+    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 100%);
+    color: #fff; border-radius: var(--radius); padding: 20px;
+    margin-bottom: 14px; position: relative; overflow: hidden;
+  }
+  .session-hero::before {
+    content: '🍎🍊🍇🍌🍓';
+    position: absolute; top: -10px; right: -10px;
+    font-size: 60px; opacity: 0.08; letter-spacing: -5px;
+  }
+  .session-label { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .session-q-num { font-family: 'Baloo 2', cursive; font-size: 42px; font-weight: 800; color: var(--yellow); line-height: 1; margin: 4px 0; }
+  .session-q-total { font-size: 13px; color: rgba(255,255,255,0.5); }
+  .session-fruit-display {
+    position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+    font-size: 64px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100%{transform:translateY(-50%) translateY(0)} 50%{transform:translateY(-50%) translateY(-8px)} }
+  .session-fruit-name { font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+  /* ANSWER FEEDBACK */
+  .feedback-bar {
+    padding: 12px 16px; border-radius: 12px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px; font-weight: 700;
+    font-size: 14px; animation: slideDown 0.3s ease;
+    display: none;
+  }
+  .feedback-bar.show { display: flex; }
+  @keyframes slideDown { from{transform:translateY(-10px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .feedback-bar.correct { background: #E8F9EE; color: #1A8A3C; border: 2px solid #2DC653; }
+  .feedback-bar.wrong { background: #FFE8E8; color: #B71C1C; border: 2px solid var(--red); }
+
+  /* STUDENT TURN ORDER */
+  .turn-order { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; }
+  .turn-card {
+    min-width: 70px; background: var(--card); border: 2px solid var(--border);
+    border-radius: 14px; padding: 10px 8px; text-align: center;
+    transition: all 0.3s; flex-shrink: 0;
+  }
+  .turn-card.active-turn { border-color: var(--orange); background: #FFF0EB; box-shadow: 0 0 0 3px rgba(255,107,53,0.2); }
+  .turn-card.done { opacity: 0.5; }
+  .turn-card .t-avatar { font-size: 28px; margin-bottom: 4px; }
+  .turn-card .t-name { font-size: 9px; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .turn-card .t-score { font-size: 11px; font-weight: 700; color: var(--orange); }
+  .turn-num { font-size: 8px; background: var(--orange); color: #fff; border-radius: 4px; padding: 1px 4px; font-weight: 800; margin-bottom: 4px; display: inline-block; }
+
+  /* STUDENT DASHBOARD */
+  .student-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .student-score-card {
+    background: var(--card); border: 2px solid var(--border); border-radius: 16px;
+    padding: 14px 12px; text-align: center; transition: all 0.3s; cursor: pointer;
+  }
+  .student-score-card:active { transform: scale(0.97); }
+  .student-score-card .sc-avatar { font-size: 36px; margin-bottom: 6px; }
+  .student-score-card .sc-name { font-size: 12px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+  .student-score-card .sc-class { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+  .score-ring {
+    width: 50px; height: 50px; border-radius: 50%;
+    background: conic-gradient(var(--green) 0%, var(--border) 0%);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 4px; font-size: 13px; font-weight: 800; color: var(--text);
+    position: relative;
+  }
+  .score-ring::before {
+    content: ''; position: absolute; width: 36px; height: 36px;
+    border-radius: 50%; background: var(--card);
+  }
+  .score-ring span { position: relative; z-index: 1; }
+  .sc-stats { display: flex; gap: 6px; justify-content: center; }
+  .sc-stat { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
+  .sc-stat.c { background: #E8F9EE; color: #1A8A3C; }
+  .sc-stat.w { background: #FFE8E8; color: var(--red); }
+
+  /* NFC SETUP */
+  .nfc-item {
+    background: var(--card); border: 2px solid var(--border); border-radius: 14px;
+    padding: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .nfc-item:active { transform: scale(0.98); }
+  .nfc-item.assigned { border-color: var(--green); background: #F0FDF4; }
+  .nfc-item.student-type { border-color: var(--teal); background: #F0FAFF; }
+  .nfc-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .nfc-icon.empty { background: #F5F0FF; }
+  .nfc-icon.set-student { background: #E0F8FF; }
+  .nfc-icon.set-fruit { background: #E8F9EE; }
+  .nfc-icon.set-answer { background: #FFF0EB; }
+  .nfc-info { flex: 1; min-width: 0; }
+  .nfc-id { font-size: 10px; color: var(--muted); font-weight: 700; margin-bottom: 2px; font-family: monospace; }
+  .nfc-label { font-size: 14px; font-weight: 800; color: var(--text); }
+  .nfc-sub { font-size: 11px; color: var(--muted); }
+  .nfc-type-badge {
+    font-size: 9px; font-weight: 800; padding: 3px 7px; border-radius: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge-student { background: #E0F8FF; color: #006B99; }
+  .badge-fruit { background: #E8F9EE; color: #1A8A3C; }
+  .badge-empty { background: #F0F0F0; color: #888; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 200; display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    background: var(--bg); border-radius: 24px 24px 0 0; width: 100%; max-width: 500px;
+    padding: 20px; max-height: 85vh; overflow-y: auto;
+    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .modal-overlay.show .modal-sheet { transform: translateY(0); }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-family: 'Baloo 2', cursive; font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+
+  /* FORM ELEMENTS */
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+  .form-input, .form-select {
+    width: 100%; padding: 12px 14px; border: 2px solid var(--border);
+    border-radius: 12px; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 600;
+    background: var(--card); color: var(--text); outline: none; transition: border-color 0.2s;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--orange); }
+  .emoji-picker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 8px; }
+  .emoji-opt {
+    width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; border-radius: 10px; border: 2px solid var(--border); background: var(--card);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .emoji-opt.selected { border-color: var(--orange); background: #FFF0EB; transform: scale(1.1); }
+
+  /* BUTTONS */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 20px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+    transition: all 0.2s; width: 100%;
+  }
+  .btn-primary { background: var(--orange); color: #fff; box-shadow: 0 4px 12px rgba(255,107,53,0.4); }
+  .btn-primary:active { transform: scale(0.97); box-shadow: none; }
+  .btn-success { background: var(--green); color: #fff; box-shadow: 0 4px 12px rgba(45,198,83,0.4); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-ghost { background: var(--border); color: var(--text); }
+  .btn-sm { padding: 8px 14px; font-size: 12px; border-radius: 9px; width: auto; }
+  .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+  .btn-row .btn { flex: 1; }
+
+  /* STATS ROW */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat-box {
+    background: var(--card); border-radius: 14px; padding: 14px 10px; text-align: center;
+    border: 2px solid var(--border);
+  }
+  .stat-box .stat-num { font-family: 'Baloo 2', cursive; font-size: 28px; font-weight: 800; line-height: 1; }
+  .stat-box .stat-lbl { font-size: 10px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+  .stat-box.orange .stat-num { color: var(--orange); }
+  .stat-box.green .stat-num { color: var(--green); }
+  .stat-box.red .stat-num { color: var(--red); }
+
+  /* STUDENT DETAIL */
+  .student-detail-header {
+    background: linear-gradient(135deg, var(--purple) 0%, #9B59B6 100%);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 14px; color: #fff; text-align: center;
+  }
+  .sd-avatar { font-size: 56px; margin-bottom: 8px; }
+  .sd-name { font-family: 'Baloo 2', cursive; font-size: 22px; font-weight: 800; margin-bottom: 2px; }
+  .sd-meta { font-size: 13px; color: rgba(255,255,255,0.7); }
+  .answer-list { list-style: none; }
+  .answer-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .answer-item:last-child { border-bottom: none; }
+  .answer-q { font-size: 22px; }
+  .answer-text { flex: 1; }
+  .answer-text .aq-label { font-size: 11px; color: var(--muted); font-weight: 700; }
+  .answer-text .aq-val { font-size: 14px; font-weight: 700; color: var(--text); }
+  .answer-icon { font-size: 22px; }
+
+  /* QUESTION SETUP */
+  .q-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: var(--card); border: 2px solid var(--border); border-radius: 12px; margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .q-num { width: 28px; height: 28px; border-radius: 8px; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+  .q-fruit { font-size: 24px; }
+  .q-label { flex: 1; font-size: 13px; font-weight: 700; }
+  .q-nfc { font-size: 10px; color: var(--muted); font-family: monospace; }
+
+  /* ACTIVITY LOG */
+  .activity-item {
+    display: flex; align-items: flex-start; gap: 10px; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-icon { font-size: 18px; flex-shrink: 0; }
+  .activity-text { flex: 1; font-size: 13px; line-height: 1.4; }
+  .activity-text strong { font-weight: 800; }
+  .activity-time { font-size: 10px; color: var(--muted); }
+
+  /* SESSION CONTROL */
+  .session-control {
+    display: flex; gap: 8px; margin-bottom: 14px;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed; top: 140px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    background: var(--text); color: #fff; padding: 10px 20px; border-radius: 30px;
+    font-size: 13px; font-weight: 700; z-index: 300; opacity: 0;
+    transition: all 0.3s; white-space: nowrap; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; font-weight: 600; }
+
+  /* PROGRESS BAR */
+  .progress-wrap { background: var(--border); border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+  .progress-bar { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--green), #5CE877); transition: width 0.5s ease; }
+
+  /* SCAN ANIMATION */
+  .scan-indicator {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 14px; background: linear-gradient(135deg, #F0F8FF, #E8F9EE);
+    border: 2px dashed var(--teal); border-radius: 14px; margin-bottom: 14px;
+    font-size: 13px; font-weight: 700; color: var(--teal);
+  }
+  .scan-indicator .scan-wave {
+    width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--teal);
+    animation: scanWave 1.5s ease-out infinite;
+  }
+  @keyframes scanWave {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+
+  /* LEADERBOARD */
+  .lb-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    border-radius: 14px; margin-bottom: 8px; background: var(--card);
+    border: 2px solid var(--border); transition: all 0.3s;
+  }
+  .lb-item.rank-1 { border-color: #FFD700; background: #FFFBF0; }
+  .lb-item.rank-2 { border-color: #C0C0C0; background: #F8F8F8; }
+  .lb-item.rank-3 { border-color: #CD7F32; background: #FFF5F0; }
+  .lb-rank { font-family: 'Baloo 2', cursive; font-size: 20px; font-weight: 800; width: 30px; text-align: center; }
+  .lb-avatar { font-size: 30px; }
+  .lb-info { flex: 1; }
+  .lb-name { font-size: 14px; font-weight: 800; }
+  .lb-detail { font-size: 11px; color: var(--muted); }
+  .lb-score { font-family: 'Baloo 2', cursive; font-size: 24px; font-weight: 800; color: var(--orange); }
+
+  /* SECTION DIVIDER */
+  .section-head {
+    font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 10px; margin-top: 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-head::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* TYPE TABS */
+  .type-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .type-tab {
+    flex: 1; padding: 8px; border-radius: 10px; border: 2px solid var(--border);
+    background: var(--card); font-size: 11px; font-weight: 800; cursor: pointer;
+    text-align: center; transition: all 0.2s; color: var(--muted);
+  }
+  .type-tab.active { border-color: var(--orange); background: #FFF0EB; color: var(--orange); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="header-top">
+    <div class="app-logo">🍎 Buah<span>Pintar</span></div>
+    <div class="header-status" id="connStatus">
+      <div class="status-dot offline" id="statusDot"></div>
+      <span id="statusText">Offline</span>
+    </div>
+  </div>
+  <div class="header-sub" id="headerSub">Sambung ESP32 untuk mula sesi</div>
+</header>
+
+<!-- TABS -->
+<nav class="tabs">
+  <button class="tab-btn active" onclick="switchTab('session')" id="tab-session">
+    <span class="tab-icon">🎮</span>Sesi
+  </button>
+  <button class="tab-btn" onclick="switchTab('dashboard')" id="tab-dashboard">
+    <span class="tab-icon">📊</span>Markah
+    <span class="tab-badge" id="badge-dashboard" style="display:none">!</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('students')" id="tab-students">
+    <span class="tab-icon">👨‍🎓</span>Murid
+  </button>
+  <button class="tab-btn" onclick="switchTab('nfc')" id="tab-nfc">
+    <span class="tab-icon">📡</span>NFC
+  </button>
+  <button class="tab-btn" onclick="switchTab('questions')" id="tab-questions">
+    <span class="tab-icon">❓</span>Soalan
+  </button>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ==================== PAGE: SESSION ==================== -->
+<div class="page active" id="page-session">
+
+  <div class="scan-indicator" id="scanIndicator">
+    <div class="scan-wave"></div>
+    <span>Menunggu imbasan NFC daripada ESP32...</span>
+  </div>
+
+  <div class="feedback-bar" id="feedbackBar">
+    <span id="feedbackIcon">✅</span>
+    <span id="feedbackText">Betul!</span>
+  </div>
+
+  <div class="session-hero" id="sessionHero">
+    <div class="session-label">Soalan Semasa</div>
+    <div class="session-q-num" id="sessionQNum">-</div>
+    <div class="session-q-total" id="sessionQTotal">daripada 10 soalan</div>
+    <div class="session-fruit-name" id="sessionFruitName">Tiada sesi aktif</div>
+    <div class="session-fruit-display" id="sessionFruitEmoji">🍎</div>
+  </div>
+
+  <div class="section-head">Giliran Murid</div>
+  <div class="turn-order" id="turnOrder">
+    <div class="empty-state" style="padding:20px;width:100%">
+      <p>Murid belum mendaftar masuk</p>
+    </div>
+  </div>
+
+  <div class="section-head">Kawalan Sesi</div>
+  <div class="session-control">
+    <button class="btn btn-success" id="btnStartSession" onclick="startSession()" style="flex:2">
+      ▶️ Mulakan Sesi
+    </button>
+    <button class="btn btn-danger btn-sm" id="btnResetSession" onclick="resetSession()" style="width:auto;padding:13px 14px">
+      🔄 Reset
+    </button>
+  </div>
+
+  <div class="card" id="activityCard">
+    <div class="card-title">📋 Log Aktiviti</div>
+    <div id="activityLog">
+      <div class="empty-state" style="padding:16px">
+        <div class="es-icon">📭</div>
+        <p>Tiada aktiviti lagi</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: DASHBOARD ==================== -->
+<div class="page" id="page-dashboard">
+
+  <div class="stats-row">
+    <div class="stat-box orange">
+      <div class="stat-num" id="statSessions">0</div>
+      <div class="stat-lbl">Sesi</div>
+    </div>
+    <div class="stat-box green">
+      <div class="stat-num" id="statCorrect">0</div>
+      <div class="stat-lbl">Betul</div>
+    </div>
+    <div class="stat-box red">
+      <div class="stat-num" id="statWrong">0</div>
+      <div class="stat-lbl">Salah</div>
+    </div>
+  </div>
+
+  <div class="section-head">🏆 Papan Kedudukan</div>
+  <div id="leaderboard">
+    <div class="empty-state">
+      <div class="es-icon">🏅</div>
+      <p>Belum ada data markah</p>
+    </div>
+  </div>
+
+  <div class="section-head">📊 Keputusan Setiap Murid</div>
+  <div class="student-grid" id="studentGrid">
+    <div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);font-weight:600">
+      Tambah murid dalam tab Murid dahulu
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: STUDENTS ==================== -->
+<div class="page" id="page-students">
+  <button class="btn btn-primary" onclick="openAddStudent()" style="margin-bottom:14px">
+    ➕ Tambah Murid Baru
+  </button>
+
+  <div class="section-head">Senarai Murid Berdaftar</div>
+  <div id="studentsList">
+    <div class="empty-state">
+      <div class="es-icon">👨‍👩‍👦‍👦</div>
+      <p>Belum ada murid ditambah</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: NFC ==================== -->
+<div class="page" id="page-nfc">
+  <div class="card" style="background:linear-gradient(135deg,#E0F8FF,#F0F8FF);border-color:#B0E8FF">
+    <div style="font-size:13px;font-weight:700;color:#006B99;line-height:1.6">
+      📡 <strong>Cara Setup NFC:</strong><br>
+      • Tap NFC dari ESP32 akan tunjuk ID di sini<br>
+      • Tetapkan NFC sebagai <strong>Murid</strong> atau <strong>Buah/Jawapan</strong><br>
+      • ID NFC akan dihantar oleh ESP32 secara automatik
+    </div>
+  </div>
+
+  <div class="type-tabs">
+    <button class="type-tab active" onclick="filterNFC('all')" id="nfc-filter-all">🔢 Semua</button>
+    <button class="type-tab" onclick="filterNFC('student')" id="nfc-filter-student">👤 Murid</button>
+    <button class="type-tab" onclick="filterNFC('fruit')" id="nfc-filter-fruit">🍎 Buah</button>
+    <button class="type-tab" onclick="filterNFC('empty')" id="nfc-filter-empty">❓ Kosong</button>
+  </div>
+
+  <button class="btn btn-ghost" onclick="openAddNFC()" style="margin-bottom:14px">
+    ➕ Tambah NFC Secara Manual
+  </button>
+
+  <div id="nfcList">
+    <div class="empty-state">
+      <div class="es-icon">📡</div>
+      <p>Tiada NFC dikonfigurasikan</p>
+      <p style="margin-top:6px;font-size:12px">Imbas NFC dari ESP32 atau tambah secara manual</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: QUESTIONS ==================== -->
+<div class="page" id="page-questions">
+  <div class="card" style="background:linear-gradient(135deg,#FFF0EB,#FFF8F0);border-color:#FFD0BC">
+    <div style="font-size:13px;font-weight:700;color:#C84B11;line-height:1.6">
+      ❓ <strong>Setup Soalan:</strong><br>
+      • 10 soalan dipaparkan satu persatu<br>
+      • Tetapkan NFC buah yang betul untuk setiap soalan<br>
+      • Murid scan NFC buah untuk jawab
+    </div>
+  </div>
+
+  <div class="section-head">10 Soalan Sesi</div>
+  <div id="questionsList"></div>
+</div>
+
+<!-- ==================== MODAL: ADD/EDIT NFC ==================== -->
+<div class="modal-overlay" id="modalNFC">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalNFCTitle">⚙️ Tetapkan NFC</div>
+
+    <div class="form-group">
+      <label class="form-label">ID NFC (dari ESP32)</label>
+      <input type="text" class="form-input" id="nfcIdInput" placeholder="Contoh: A1B2C3D4" style="font-family:monospace">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Jenis NFC</label>
+      <div class="type-tabs" style="margin-bottom:0">
+        <button class="type-tab active" onclick="setNFCType('student')" id="nfcTypeStudent">👤 Kad Murid</button>
+        <button class="type-tab" onclick="setNFCType('fruit')" id="nfcTypeFruit">🍎 Buah/Jawapan</button>
+      </div>
+    </div>
+
+    <!-- STUDENT TYPE -->
+    <div id="nfcStudentFields">
+      <div class="form-group">
+        <label class="form-label">Pilih Murid</label>
+        <select class="form-select" id="nfcStudentSelect">
+          <option value="">-- Pilih murid --</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- FRUIT TYPE -->
+    <div id="nfcFruitFields" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Nama Buah</label>
+        <input type="text" class="form-input" id="nfcFruitName" placeholder="Contoh: Epal, Oren, Mangga...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pilih Emoji Buah</label>
+        <div class="emoji-picker" id="fruitEmojiPicker"></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeModal('modalNFC')">Batal</button>
+      <button class="btn btn-primary" onclick="saveNFC()">💾 Simpan</button>
+    </div>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ==================== MODAL: ADD STUDENT ==================== -->
+<div class="modal-overlay" id="modalStudent">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">👤 Tambah Murid</div>
+
+    <div class="form-group">
+      <label class="form-label">Nama Penuh</label>
+      <input type="text" class="form-input" id="studentName" placeholder="Contoh: Ahmad Aiman">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nombor / ID Murid</label>
+      <input type="text" class="form-input" id="studentId" placeholder="Contoh: 12345">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Kelas</label>
+      <input type="text" class="form-input" id="studentClass" placeholder="Contoh: 3 Bestari">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Avatar (Emoji)</label>
+      <div class="emoji-picker" id="studentAvatarPicker"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeModal('modalStudent')">Batal</button>
+      <button class="btn btn-primary" onclick="saveStudent()">💾 Simpan</button>
+    </div>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ==================== MODAL: STUDENT DETAIL ==================== -->
+<div class="modal-overlay" id="modalStudentDetail">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="studentDetailContent"></div>
+    <button class="btn btn-ghost" onclick="closeModal('modalStudentDetail')" style="margin-top:8px">Tutup</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ==================== MODAL: QUESTION EDIT ==================== -->
+<div class="modal-overlay" id="modalQuestion">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalQTitle">❓ Tetapkan Soalan</div>
+    <input type="hidden" id="editingQIndex">
+
+    <div class="form-group">
+      <label class="form-label">Soalan (Nama Buah yang Perlu Dijawab)</label>
+      <input type="text" class="form-input" id="qFruitName" placeholder="Contoh: Epal">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Emoji Buah</label>
+      <div class="emoji-picker" id="questionEmojiPicker"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">NFC Jawapan Betul (ID NFC Buah)</label>
+      <select class="form-select" id="qNFCSelect">
+        <option value="">-- Pilih NFC Buah --</option>
+      </select>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeModal('modalQuestion')">Batal</button>
+      <button class="btn btn-primary" onclick="saveQuestion()">💾 Simpan</button>
+    </div>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// APP STATE
+// ============================================================
+const FRUIT_EMOJIS = ['🍎','🍊','🍋','🍇','🍓','🍑','🍒','🍍','🥭','🍌','🍉','🥝','🫐','🍈','🍐','🍏','🥥','🍅'];
+const AVATAR_EMOJIS = ['🧒','👦','👧','🧑','👨','👩','🧔','👱','🧕','👲','🧒🏻','👦🏻','👧🏽','🧑🏾','👨🏿','👩🏻'];
+
+let appState = {
+  students: [],          // {id, name, class, avatar, scores: [{q, correct}], totalCorrect, totalWrong}
+  nfcCards: [],          // {id: "A1B2C3", type: "student"|"fruit", studentId?, fruitName?, fruitEmoji?}
+  questions: [],         // {fruitName, fruitEmoji, correctNFCId}
+  session: {
+    active: false,
+    currentQ: 0,         // 0-9
+    currentStudentIdx: 0,// 0-4
+    studentOrder: [],    // array of student IDs
+    answers: [],         // [{studentId, qIndex, correct, fruitScanned}]
+  },
+  serverUrl: '',
+  ws: null,
+  connected: false,
+  activityLog: [],
+  sessionCount: 0,
+};
+
+// ============================================================
+// LOAD/SAVE STATE
+// ============================================================
+function save() { localStorage.setItem('buahpintar_v2', JSON.stringify(appState)); }
+function load() {
+  const d = localStorage.getItem('buahpintar_v2');
+  if (d) {
+    const saved = JSON.parse(d);
+    // Merge, don't overwrite ws/connected
+    appState.students = saved.students || [];
+    appState.nfcCards = saved.nfcCards || [];
+    appState.questions = saved.questions || [];
+    appState.session = saved.session || appState.session;
+    appState.activityLog = saved.activityLog || [];
+    appState.sessionCount = saved.sessionCount || 0;
+    appState.serverUrl = saved.serverUrl || '';
+    if (!appState.session.answers) appState.session.answers = [];
+  }
+  initDefaultQuestions();
+}
+
+function initDefaultQuestions() {
+  if (appState.questions.length === 0) {
+    const defaults = [
+      {fruitName:'Epal', fruitEmoji:'🍎', correctNFCId:''},
+      {fruitName:'Oren', fruitEmoji:'🍊', correctNFCId:''},
+      {fruitName:'Anggur', fruitEmoji:'🍇', correctNFCId:''},
+      {fruitName:'Pisang', fruitEmoji:'🍌', correctNFCId:''},
+      {fruitName:'Strawberi', fruitEmoji:'🍓', correctNFCId:''},
+      {fruitName:'Mangga', fruitEmoji:'🥭', correctNFCId:''},
+      {fruitName:'Nanas', fruitEmoji:'🍍', correctNFCId:''},
+      {fruitName:'Tembikai', fruitEmoji:'🍉', correctNFCId:''},
+      {fruitName:'Kiwi', fruitEmoji:'🥝', correctNFCId:''},
+      {fruitName:'Ceri', fruitEmoji:'🍒', correctNFCId:''},
+    ];
+    appState.questions = defaults;
+    save();
+  }
+}
+
+// ============================================================
+// WEBSOCKET / SERVER CONNECTION
+// ============================================================
+function connectWS() {
+  if (!appState.serverUrl) return;
+  const wsUrl = appState.serverUrl.replace('http','ws').replace('https','wss') + '/ws';
+  if (appState.ws) appState.ws.close();
+  appState.ws = new WebSocket(wsUrl);
+
+  appState.ws.onopen = () => {
+    appState.connected = true;
+    updateStatus(true);
+    showToast('✅ Berjaya sambung ke pelayan');
+  };
+  appState.ws.onclose = () => {
+    appState.connected = false;
+    updateStatus(false);
+    setTimeout(connectWS, 5000);
+  };
+  appState.ws.onerror = () => {
+    appState.connected = false;
+    updateStatus(false);
+  };
+  appState.ws.onmessage = (e) => {
+    try { handleServerMessage(JSON.parse(e.data)); } catch(err){}
+  };
+}
+
+function updateStatus(online) {
+  document.getElementById('statusDot').className = 'status-dot' + (online ? '' : ' offline');
+  document.getElementById('statusText').textContent = online ? 'Online' : 'Offline';
+  document.getElementById('headerSub').textContent = online
+    ? 'ESP32 bersambung — sedia untuk imbasan'
+    : 'Sambung ESP32 untuk mula sesi';
+}
+
+// ============================================================
+// HANDLE MESSAGES FROM ESP32 (via server WebSocket)
+// ============================================================
+function handleServerMessage(msg) {
+  console.log('WS msg:', msg);
+  addActivity(msg.type, msg);
+
+  if (msg.type === 'nfc_scan') {
+    handleNFCScan(msg.nfcId, msg.rawData);
+  } else if (msg.type === 'register_students') {
+    // ESP32 sends student list from their NFC scan
+    handleRegisterStudents(msg.students);
+  }
+}
+
+// Called when ESP32 scans an NFC
+function handleNFCScan(nfcId, rawData) {
+  const card = appState.nfcCards.find(c => c.id.toUpperCase() === nfcId.toUpperCase());
+
+  if (!card) {
+    // Unknown NFC — auto-add as unknown
+    appState.nfcCards.push({id: nfcId, type: 'unknown', rawData});
+    save();
+    renderNFCList();
+    showToast('📡 NFC baru dikesan: ' + nfcId);
+    document.getElementById('badge-dashboard').style.display = 'flex';
+
+    // Prompt to configure
+    openEditNFC(nfcId);
+    return;
+  }
+
+  if (card.type === 'student') {
+    handleStudentScan(card);
+  } else if (card.type === 'fruit') {
+    handleFruitScan(card);
+  }
+}
+
+function handleStudentScan(card) {
+  const student = appState.students.find(s => s.id === card.studentId);
+  if (!student) { showToast('⚠️ Murid tidak dijumpai'); return; }
+
+  // Add to session order if not already in
+  if (!appState.session.studentOrder.includes(student.id)) {
+    appState.session.studentOrder.push(student.id);
+    if (appState.session.studentOrder.length > 5) appState.session.studentOrder.shift();
+    save();
+    renderTurnOrder();
+    addActivity('student_join', {studentName: student.name});
+    showToast('👤 ' + student.name + ' telah mendaftar masuk');
+  }
+}
+
+function handleFruitScan(card) {
+  if (!appState.session.active) {
+    showToast('⚠️ Sesi belum dimulakan');
+    return;
+  }
+  const q = appState.questions[appState.session.currentQ];
+  if (!q) return;
+
+  const correct = (card.id.toUpperCase() === q.correctNFCId.toUpperCase());
+  processAnswer(card, correct);
+}
+
+function handleRegisterStudents(studentList) {
+  // ESP32 sends array: [{id, name, class}]
+  appState.session.studentOrder = [];
+  studentList.forEach(s => {
+    const student = appState.students.find(st => st.id === s.id);
+    if (student) appState.session.studentOrder.push(student.id);
+  });
+  save();
+  renderTurnOrder();
+  showToast('👥 ' + studentList.length + ' murid telah mendaftar');
+}
+
+function processAnswer(card, correct) {
+  const session = appState.session;
+  const currentStudentId = session.studentOrder[session.currentStudentIdx];
+  const student = appState.students.find(s => s.id === currentStudentId);
+
+  if (!student) { showToast('⚠️ Tiada murid dalam giliran'); return; }
+
+  // Record answer
+  session.answers.push({
+    studentId: currentStudentId,
+    qIndex: session.currentQ,
+    correct,
+    fruitScanned: card.fruitName,
+    timestamp: Date.now(),
+  });
+
+  // Update student score
+  if (!student.scores) student.scores = [];
+  student.scores.push({q: session.currentQ, correct, fruitScanned: card.fruitName});
+  if (correct) { student.totalCorrect = (student.totalCorrect||0) + 1; }
+  else { student.totalWrong = (student.totalWrong||0) + 1; }
+
+  // Show feedback
+  showFeedback(correct, student.name, appState.questions[session.currentQ]);
+
+  addActivity(correct ? 'correct' : 'wrong', {
+    studentName: student.name,
+    fruitName: appState.questions[session.currentQ].fruitName,
+    scanned: card.fruitName,
+  });
+
+  // Advance to next student, then next question
+  session.currentStudentIdx++;
+  if (session.currentStudentIdx >= session.studentOrder.length) {
+    session.currentStudentIdx = 0;
+    session.currentQ++;
+    if (session.currentQ >= appState.questions.length) {
+      // Session complete!
+      session.active = false;
+      appState.sessionCount++;
+      showToast('🎉 Sesi tamat! Semua soalan dijawab.');
+      addActivity('session_end', {});
+    }
+  }
+
+  save();
+  renderAll();
+}
+
+function showFeedback(correct, studentName, question) {
+  const bar = document.getElementById('feedbackBar');
+  const icon = document.getElementById('feedbackIcon');
+  const text = document.getElementById('feedbackText');
+  bar.className = 'feedback-bar show ' + (correct ? 'correct' : 'wrong');
+  icon.textContent = correct ? '✅' : '❌';
+  text.textContent = correct
+    ? `${studentName} BETUL! ${question.fruitEmoji} ${question.fruitName}`
+    : `${studentName} SALAH. Buah yang betul: ${question.fruitEmoji} ${question.fruitName}`;
+  clearTimeout(window._fbTimer);
+  window._fbTimer = setTimeout(() => { bar.classList.remove('show'); }, 4000);
+}
+
+// ============================================================
+// SESSION CONTROL
+// ============================================================
+function startSession() {
+  if (appState.session.studentOrder.length === 0) {
+    showToast('⚠️ Daftarkan murid dahulu (imbas kad NFC murid)');
+    return;
+  }
+  appState.session.active = true;
+  appState.session.currentQ = 0;
+  appState.session.currentStudentIdx = 0;
+  appState.session.answers = [];
+  addActivity('session_start', {count: appState.session.studentOrder.length});
+  save();
+  renderAll();
+  showToast('▶️ Sesi dimulakan!');
+}
+
+function resetSession() {
+  if (!confirm('Reset semua data sesi semasa?')) return;
+  appState.session = {
+    active: false, currentQ: 0, currentStudentIdx: 0,
+    studentOrder: [], answers: [],
+  };
+  appState.students.forEach(s => { s.scores = []; s.totalCorrect = 0; s.totalWrong = 0; });
+  appState.activityLog = [];
+  save();
+  renderAll();
+  showToast('🔄 Sesi direset');
+}
+
+// ============================================================
+// RENDER FUNCTIONS
+// ============================================================
+function renderAll() {
+  renderTurnOrder();
+  renderSessionHero();
+  renderStudentGrid();
+  renderLeaderboard();
+  renderStudentsList();
+  renderNFCList();
+  renderQuestionsList();
+  renderActivityLog();
+  renderStats();
+}
+
+function renderSessionHero() {
+  const s = appState.session;
+  const qEl = document.getElementById('sessionQNum');
+  const qtEl = document.getElementById('sessionQTotal');
+  const fnEl = document.getElementById('sessionFruitName');
+  const feEl = document.getElementById('sessionFruitEmoji');
+  const btnStart = document.getElementById('btnStartSession');
+
+  if (s.active && s.currentQ < appState.questions.length) {
+    const q = appState.questions[s.currentQ];
+    qEl.textContent = s.currentQ + 1;
+    qtEl.textContent = 'daripada ' + appState.questions.length + ' soalan';
+    fnEl.textContent = 'Soalan: Apakah buah ini? ' + q.fruitEmoji;
+    feEl.textContent = q.fruitEmoji;
+    btnStart.textContent = '⏸ Sesi Sedang Berjalan';
+    btnStart.disabled = true;
+  } else if (!s.active && s.currentQ >= appState.questions.length && s.currentQ > 0) {
+    qEl.textContent = '✅';
+    fnEl.textContent = 'Sesi tamat! Semua soalan selesai.';
+    feEl.textContent = '🎉';
+    btnStart.textContent = '▶️ Mulakan Sesi Baru';
+    btnStart.disabled = false;
+  } else {
+    qEl.textContent = '-';
+    fnEl.textContent = 'Mulakan sesi untuk mula';
+    feEl.textContent = '🍎';
+    btnStart.textContent = '▶️ Mulakan Sesi';
+    btnStart.disabled = false;
+  }
+}
+
+function renderTurnOrder() {
+  const el = document.getElementById('turnOrder');
+  const s = appState.session;
+  if (s.studentOrder.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px;width:100%"><p>Murid belum mendaftar masuk via NFC</p></div>';
+    return;
+  }
+  el.innerHTML = s.studentOrder.map((sid, idx) => {
+    const st = appState.students.find(s => s.id === sid);
+    if (!st) return '';
+    const isActive = s.active && idx === s.currentStudentIdx;
+    const isDone = s.active && idx < s.currentStudentIdx;
+    return `<div class="turn-card ${isActive?'active-turn':''} ${isDone?'done':''}">
+      <div><span class="turn-num">${idx+1}</span></div>
+      <div class="t-avatar">${st.avatar || '🧒'}</div>
+      <div class="t-name">${st.name.split(' ')[0]}</div>
+      <div class="t-score">${st.totalCorrect||0}✓</div>
+    </div>`;
+  }).join('');
+}
+
+function renderStudentGrid() {
+  const el = document.getElementById('studentGrid');
+  if (appState.students.length === 0) {
+    el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);font-weight:600">Tambah murid dalam tab Murid dahulu</div>';
+    return;
+  }
+  el.innerHTML = appState.students.map(s => {
+    const total = (s.totalCorrect||0) + (s.totalWrong||0);
+    const pct = total > 0 ? Math.round(((s.totalCorrect||0)/total)*100) : 0;
+    const deg = Math.round((pct/100)*360);
+    return `<div class="student-score-card" onclick="openStudentDetail('${s.id}')">
+      <div class="sc-avatar">${s.avatar||'🧒'}</div>
+      <div class="sc-name">${s.name}</div>
+      <div class="sc-class">${s.class}</div>
+      <div class="score-ring" style="background:conic-gradient(var(--green) ${deg}deg, var(--border) ${deg}deg)">
+        <span>${pct}%</span>
+      </div>
+      <div class="sc-stats">
+        <span class="sc-stat c">✅ ${s.totalCorrect||0}</span>
+        <span class="sc-stat w">❌ ${s.totalWrong||0}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLeaderboard() {
+  const el = document.getElementById('leaderboard');
+  if (appState.students.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="es-icon">🏅</div><p>Belum ada data markah</p></div>';
+    return;
+  }
+  const sorted = [...appState.students].sort((a,b) => (b.totalCorrect||0)-(a.totalCorrect||0));
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = sorted.map((s, i) => `
+    <div class="lb-item rank-${i+1}">
+      <div class="lb-rank">${medals[i] || (i+1)}</div>
+      <div class="lb-avatar">${s.avatar||'🧒'}</div>
+      <div class="lb-info">
+        <div class="lb-name">${s.name}</div>
+        <div class="lb-detail">${s.class} • ✅${s.totalCorrect||0} ❌${s.totalWrong||0}</div>
+      </div>
+      <div class="lb-score">${s.totalCorrect||0}</div>
+    </div>
+  `).join('');
+}
+
+function renderStats() {
+  const total = appState.students.reduce((a,s) => a+(s.totalCorrect||0)+(s.totalWrong||0), 0);
+  const correct = appState.students.reduce((a,s) => a+(s.totalCorrect||0), 0);
+  document.getElementById('statSessions').textContent = appState.sessionCount;
+  document.getElementById('statCorrect').textContent = correct;
+  document.getElementById('statWrong').textContent = total - correct;
+}
+
+function renderStudentsList() {
+  const el = document.getElementById('studentsList');
+  if (appState.students.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="es-icon">👨‍👩‍👦‍👦</div><p>Belum ada murid ditambah</p></div>';
+    return;
+  }
+  el.innerHTML = appState.students.map(s => `
+    <div class="nfc-item" onclick="openStudentDetail('${s.id}')">
+      <div class="nfc-icon set-student" style="font-size:28px">${s.avatar||'🧒'}</div>
+      <div class="nfc-info">
+        <div class="nfc-id">ID: ${s.id}</div>
+        <div class="nfc-label">${s.name}</div>
+        <div class="nfc-sub">📚 ${s.class} • ✅${s.totalCorrect||0} ❌${s.totalWrong||0}</div>
+      </div>
+      <div>
+        <span class="nfc-type-badge badge-student">Murid</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderNFCList(filter = window._nfcFilter || 'all') {
+  window._nfcFilter = filter;
+  const el = document.getElementById('nfcList');
+  let cards = [...appState.nfcCards];
+  if (filter === 'student') cards = cards.filter(c => c.type === 'student');
+  else if (filter === 'fruit') cards = cards.filter(c => c.type === 'fruit');
+  else if (filter === 'empty') cards = cards.filter(c => c.type === 'unknown' || !c.type);
+
+  if (cards.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="es-icon">📡</div><p>Tiada NFC dalam kategori ini</p></div>';
+    return;
+  }
+  el.innerHTML = cards.map(c => {
+    let icon, label, sub, badgeClass, badgeText;
+    if (c.type === 'student') {
+      const st = appState.students.find(s => s.id === c.studentId);
+      icon = `<div class="nfc-icon set-student" style="font-size:22px">${st?.avatar||'👤'}</div>`;
+      label = st?.name || '(murid tidak dijumpai)';
+      sub = st ? `Kelas ${st.class}` : '';
+      badgeClass = 'badge-student'; badgeText = 'Murid';
+    } else if (c.type === 'fruit') {
+      icon = `<div class="nfc-icon set-fruit" style="font-size:22px">${c.fruitEmoji||'🍎'}</div>`;
+      label = c.fruitName || 'Buah';
+      sub = 'Jawapan Buah';
+      badgeClass = 'badge-fruit'; badgeText = 'Buah';
+    } else {
+      icon = `<div class="nfc-icon empty">❓</div>`;
+      label = 'Belum ditetapkan';
+      sub = 'Tap untuk konfigurasikan';
+      badgeClass = 'badge-empty'; badgeText = 'Kosong';
+    }
+    return `<div class="nfc-item ${c.type==='student'?'student-type':''} ${c.type==='fruit'?'assigned':''}" onclick="openEditNFC('${c.id}')">
+      ${icon}
+      <div class="nfc-info">
+        <div class="nfc-id">NFC: ${c.id}</div>
+        <div class="nfc-label">${label}</div>
+        <div class="nfc-sub">${sub}</div>
+      </div>
+      <span class="nfc-type-badge ${badgeClass}">${badgeText}</span>
+    </div>`;
+  }).join('');
+}
+
+function filterNFC(type) {
+  ['all','student','fruit','empty'].forEach(t => {
+    document.getElementById('nfc-filter-'+t).classList.toggle('active', t === type);
+  });
+  renderNFCList(type);
+}
+
+function renderQuestionsList() {
+  const el = document.getElementById('questionsList');
+  el.innerHTML = appState.questions.map((q, i) => {
+    const nfc = appState.nfcCards.find(c => c.id === q.correctNFCId);
+    const isSet = !!q.correctNFCId;
+    return `<div class="q-item" onclick="openEditQuestion(${i})">
+      <div class="q-num">${i+1}</div>
+      <div class="q-fruit">${q.fruitEmoji}</div>
+      <div class="q-label">${q.fruitName}</div>
+      <div>
+        ${isSet
+          ? `<span class="nfc-type-badge badge-fruit">📡 ${q.correctNFCId.substring(0,6)}</span>`
+          : `<span class="nfc-type-badge badge-empty">Belum set</span>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderActivityLog() {
+  const el = document.getElementById('activityLog');
+  const recent = [...appState.activityLog].reverse().slice(0, 15);
+  if (recent.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:16px"><div class="es-icon">📭</div><p>Tiada aktiviti lagi</p></div>';
+    return;
+  }
+  const typeMap = {
+    student_join: {icon:'👋', text: d => `${d.studentName} mendaftar masuk`},
+    session_start: {icon:'▶️', text: d => `Sesi dimulakan dengan ${d.count} murid`},
+    session_end: {icon:'🏁', text: () => `Sesi tamat!`},
+    correct: {icon:'✅', text: d => `${d.studentName} jawab BETUL — ${d.fruitName}`},
+    wrong: {icon:'❌', text: d => `${d.studentName} jawab SALAH — imbas: ${d.scanned||'?'}, betul: ${d.fruitName}`},
+    nfc_scan: {icon:'📡', text: d => `NFC diimbas: ${d.nfcId||''}`},
+  };
+  el.innerHTML = recent.map(a => {
+    const t = typeMap[a.type] || {icon:'📌', text: ()=>a.type};
+    const timeStr = new Date(a.ts).toLocaleTimeString('ms-MY', {hour:'2-digit',minute:'2-digit'});
+    return `<div class="activity-item">
+      <div class="activity-icon">${t.icon}</div>
+      <div class="activity-text">${t.text(a.data)}</div>
+      <div class="activity-time">${timeStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function addActivity(type, data) {
+  appState.activityLog.push({type, data, ts: Date.now()});
+  if (appState.activityLog.length > 50) appState.activityLog.shift();
+  renderActivityLog();
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+let _editingNFCId = null;
+let _editingNFCType = 'student';
+let _selectedStudentAvatar = '🧒';
+let _selectedFruitEmoji = '🍎';
+let _selectedQEmoji = '🍎';
+
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function openAddNFC() {
+  _editingNFCId = null;
+  _editingNFCType = 'student';
+  document.getElementById('modalNFCTitle').textContent = '➕ Tambah NFC Baru';
+  document.getElementById('nfcIdInput').value = '';
+  document.getElementById('nfcIdInput').disabled = false;
+  document.getElementById('nfcFruitName').value = '';
+  setNFCType('student');
+  populateStudentSelect();
+  buildEmojiPicker('fruitEmojiPicker', FRUIT_EMOJIS, 'fruit');
+  openModal('modalNFC');
+}
+
+function openEditNFC(nfcId) {
+  _editingNFCId = nfcId;
+  const card = appState.nfcCards.find(c => c.id === nfcId);
+  document.getElementById('modalNFCTitle').textContent = '⚙️ Tetapkan NFC';
+  document.getElementById('nfcIdInput').value = nfcId;
+  document.getElementById('nfcIdInput').disabled = !!card;
+  populateStudentSelect();
+  buildEmojiPicker('fruitEmojiPicker', FRUIT_EMOJIS, 'fruit');
+
+  if (card) {
+    if (card.type === 'student') {
+      setNFCType('student');
+      document.getElementById('nfcStudentSelect').value = card.studentId || '';
+    } else if (card.type === 'fruit') {
+      setNFCType('fruit');
+      document.getElementById('nfcFruitName').value = card.fruitName || '';
+      _selectedFruitEmoji = card.fruitEmoji || '🍎';
+      buildEmojiPicker('fruitEmojiPicker', FRUIT_EMOJIS, 'fruit');
+    }
+  } else {
+    setNFCType('student');
+  }
+  openModal('modalNFC');
+}
+
+function setNFCType(type) {
+  _editingNFCType = type;
+  document.getElementById('nfcTypeStudent').classList.toggle('active', type === 'student');
+  document.getElementById('nfcTypeFruit').classList.toggle('active', type === 'fruit');
+  document.getElementById('nfcStudentFields').style.display = type === 'student' ? '' : 'none';
+  document.getElementById('nfcFruitFields').style.display = type === 'fruit' ? '' : 'none';
+}
+
+function saveNFC() {
+  const id = document.getElementById('nfcIdInput').value.trim().toUpperCase();
+  if (!id) { showToast('⚠️ Masukkan ID NFC'); return; }
+
+  let card = appState.nfcCards.find(c => c.id === id);
+  if (!card) { card = {id}; appState.nfcCards.push(card); }
+
+  if (_editingNFCType === 'student') {
+    const sid = document.getElementById('nfcStudentSelect').value;
+    if (!sid) { showToast('⚠️ Pilih murid'); return; }
+    card.type = 'student';
+    card.studentId = sid;
+    delete card.fruitName; delete card.fruitEmoji;
+  } else {
+    const fname = document.getElementById('nfcFruitName').value.trim();
+    if (!fname) { showToast('⚠️ Masukkan nama buah'); return; }
+    card.type = 'fruit';
+    card.fruitName = fname;
+    card.fruitEmoji = _selectedFruitEmoji;
+    delete card.studentId;
+  }
+
+  save();
+  renderNFCList();
+  renderQuestionsList(); // Update question NFC selects
+  closeModal('modalNFC');
+  showToast('✅ NFC disimpan: ' + id);
+}
+
+function populateStudentSelect() {
+  const sel = document.getElementById('nfcStudentSelect');
+  sel.innerHTML = '<option value="">-- Pilih murid --</option>' +
+    appState.students.map(s => `<option value="${s.id}">${s.avatar||'🧒'} ${s.name} (${s.class})</option>`).join('');
+}
+
+function openAddStudent() {
+  _selectedStudentAvatar = '🧒';
+  document.getElementById('studentName').value = '';
+  document.getElementById('studentId').value = '';
+  document.getElementById('studentClass').value = '';
+  buildEmojiPicker('studentAvatarPicker', AVATAR_EMOJIS, 'avatar');
+  openModal('modalStudent');
+}
+
+function saveStudent() {
+  const name = document.getElementById('studentName').value.trim();
+  const id = document.getElementById('studentId').value.trim();
+  const cls = document.getElementById('studentClass').value.trim();
+  if (!name || !id) { showToast('⚠️ Nama dan ID wajib diisi'); return; }
+  if (appState.students.find(s => s.id === id)) { showToast('⚠️ ID sudah wujud'); return; }
+
+  appState.students.push({
+    id, name, class: cls, avatar: _selectedStudentAvatar,
+    scores: [], totalCorrect: 0, totalWrong: 0,
+  });
+  save();
+  renderAll();
+  closeModal('modalStudent');
+  showToast('✅ Murid ' + name + ' ditambah!');
+}
+
+function openStudentDetail(studentId) {
+  const s = appState.students.find(st => st.id === studentId);
+  if (!s) return;
+  const total = (s.totalCorrect||0)+(s.totalWrong||0);
+  const pct = total > 0 ? Math.round(((s.totalCorrect||0)/total)*100) : 0;
+  const scores = s.scores || [];
+
+  let answersHTML = '';
+  if (scores.length > 0) {
+    answersHTML = `<ul class="answer-list">${scores.map((sc, i) => {
+      const q = appState.questions[sc.q];
+      return `<li class="answer-item">
+        <div class="answer-q">${q?.fruitEmoji||'❓'}</div>
+        <div class="answer-text">
+          <div class="aq-label">Soalan ${sc.q+1}</div>
+          <div class="aq-val">${q?.fruitName||'?'} ${sc.fruitScanned ? '— imbas: '+sc.fruitScanned : ''}</div>
+        </div>
+        <div class="answer-icon">${sc.correct ? '✅' : '❌'}</div>
+      </li>`;
+    }).join('')}</ul>`;
+  } else {
+    answersHTML = '<div class="empty-state" style="padding:20px"><p>Belum menjawab soalan</p></div>';
+  }
+
+  document.getElementById('studentDetailContent').innerHTML = `
+    <div class="student-detail-header">
+      <div class="sd-avatar">${s.avatar||'🧒'}</div>
+      <div class="sd-name">${s.name}</div>
+      <div class="sd-meta">ID: ${s.id} • Kelas ${s.class}</div>
+    </div>
+    <div class="stats-row" style="margin-bottom:16px">
+      <div class="stat-box orange"><div class="stat-num">${total}</div><div class="stat-lbl">Dijawab</div></div>
+      <div class="stat-box green"><div class="stat-num">${s.totalCorrect||0}</div><div class="stat-lbl">Betul</div></div>
+      <div class="stat-box red"><div class="stat-num">${s.totalWrong||0}</div><div class="stat-lbl">Salah</div></div>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div style="text-align:center;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:14px">${pct}% Tepat</div>
+    <div class="card-title">📋 Jawapan Soalan</div>
+    ${answersHTML}
+  `;
+  openModal('modalStudentDetail');
+}
+
+function openEditQuestion(idx) {
+  document.getElementById('editingQIndex').value = idx;
+  document.getElementById('modalQTitle').textContent = `❓ Soalan ${idx+1}`;
+  const q = appState.questions[idx];
+  document.getElementById('qFruitName').value = q.fruitName;
+  _selectedQEmoji = q.fruitEmoji;
+  buildEmojiPicker('questionEmojiPicker', FRUIT_EMOJIS, 'question');
+
+  // Populate NFC options (fruit type only)
+  const sel = document.getElementById('qNFCSelect');
+  const fruitCards = appState.nfcCards.filter(c => c.type === 'fruit');
+  sel.innerHTML = '<option value="">-- Tiada NFC ditetapkan --</option>' +
+    fruitCards.map(c => `<option value="${c.id}" ${c.id===q.correctNFCId?'selected':''}>${c.fruitEmoji||'🍎'} ${c.fruitName} (${c.id})</option>`).join('');
+  openModal('modalQuestion');
+}
+
+function saveQuestion() {
+  const idx = parseInt(document.getElementById('editingQIndex').value);
+  const name = document.getElementById('qFruitName').value.trim();
+  if (!name) { showToast('⚠️ Masukkan nama buah'); return; }
+  appState.questions[idx] = {
+    fruitName: name,
+    fruitEmoji: _selectedQEmoji,
+    correctNFCId: document.getElementById('qNFCSelect').value,
+  };
+  save();
+  renderQuestionsList();
+  closeModal('modalQuestion');
+  showToast('✅ Soalan ' + (idx+1) + ' disimpan');
+}
+
+// ============================================================
+// EMOJI PICKERS
+// ============================================================
+function buildEmojiPicker(containerId, emojis, type) {
+  const el = document.getElementById(containerId);
+  const current = type === 'fruit' ? _selectedFruitEmoji : type === 'avatar' ? _selectedStudentAvatar : _selectedQEmoji;
+  el.innerHTML = emojis.map(e => `
+    <div class="emoji-opt ${e===current?'selected':''}" onclick="selectEmoji('${containerId}','${e}','${type}')">${e}</div>
+  `).join('');
+}
+
+function selectEmoji(containerId, emoji, type) {
+  if (type === 'fruit') _selectedFruitEmoji = emoji;
+  else if (type === 'avatar') _selectedStudentAvatar = emoji;
+  else if (type === 'question') _selectedQEmoji = emoji;
+  buildEmojiPicker(containerId, type === 'avatar' ? AVATAR_EMOJIS : FRUIT_EMOJIS, type);
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'dashboard') document.getElementById('badge-dashboard').style.display = 'none';
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ============================================================
+// SERVER URL SETUP
+// ============================================================
+function promptServerUrl() {
+  const url = prompt('Masukkan URL pelayan (contoh: http://192.168.1.100:3000):', appState.serverUrl || 'http://');
+  if (url && url.startsWith('http')) {
+    appState.serverUrl = url.trim().replace(/\/$/, '');
+    save();
+    connectWS();
+  }
+}
+
+// Long press on status to change server URL
+document.getElementById('connStatus').addEventListener('click', promptServerUrl);
+
+// ============================================================
+// SIMULATE ESP32 (for testing without hardware)
+// ============================================================
+function simulateNFC(nfcId) {
+  handleNFCScan(nfcId, {simulated: true});
+}
+
+// Expose for console testing
+window.sim = {
+  nfc: simulateNFC,
+  studentJoin: (nfcId) => {
+    addActivity('nfc_scan', {nfcId});
+    handleNFCScan(nfcId, {});
+  },
+  answer: (nfcId) => {
+    addActivity('nfc_scan', {nfcId});
+    handleNFCScan(nfcId, {});
+  }
+};
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Telegram WebApp integration
+  if (window.Telegram?.WebApp) {
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor('#FF6B35');
+    tg.setBackgroundColor('#FFF8F0');
+  }
+
+  load();
+  renderAll();
+
+  // Try to reconnect if server URL was saved
+  if (appState.serverUrl) {
+    setTimeout(connectWS, 1000);
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target === el) el.classList.remove('show');
+    });
+  });
+
+  console.log('🍎 BuahPintar loaded! Use window.sim.nfc("ID") to simulate NFC scans');
+});
+</script>
+</body>
+</html>
