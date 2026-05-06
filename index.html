@@ -708,17 +708,13 @@ const FRUIT_EMOJIS = ['🍎','🍊','🍋','🍇','🍓','🍑','🍒','🍍','�
 const AVATAR_EMOJIS = ['🧒','👦','👧','🧑','👨','👩','🧔','👱','🧕','👲','🧒🏻','👦🏻','👧🏽','🧑🏾','👨🏿','👩🏻'];
 
 let appState = {
-  students: [],          // {id, name, class, avatar, scores: [{q, correct}], totalCorrect, totalWrong}
-  nfcCards: [],          // {id: "A1B2C3", type: "student"|"fruit", studentId?, fruitName?, fruitEmoji?}
-  questions: [],         // {fruitName, fruitEmoji, correctNFCId}
+  students: [],
+  nfcCards: [],
+  questions: [],
   session: {
-    active: false,
-    currentQ: 0,         // 0-9
-    currentStudentIdx: 0,// 0-4
-    studentOrder: [],    // array of student IDs
-    answers: [],         // [{studentId, qIndex, correct, fruitScanned}]
+    active: false, currentQ: 0, currentStudentIdx: 0,
+    studentOrder: [], answers: [],
   },
-  serverUrl: '',
   ws: null,
   connected: false,
   activityLog: [],
@@ -726,63 +722,62 @@ let appState = {
 };
 
 // ============================================================
-// LOAD/SAVE STATE
+// SYNC KE SERVER — ganti localStorage
 // ============================================================
-function save() { localStorage.setItem('buahpintar_v2', JSON.stringify(appState)); }
+function save() {
+  // Sync setiap key penting ke server
+  syncKey('students');
+  syncKey('nfcCards');
+  syncKey('questions');
+  syncKey('session');
+  syncKey('activityLog');
+  syncKey('sessionCount');
+}
+
+function syncKey(key) {
+  if (appState.ws && appState.ws.readyState === 1) {
+    appState.ws.send(JSON.stringify({ type: 'update', key, value: appState[key] }));
+  }
+}
+
+function applyServerData(data) {
+  if (!data) return;
+  if (data.students) appState.students = data.students;
+  if (data.nfcCards) appState.nfcCards = data.nfcCards;
+  if (data.questions && data.questions.length > 0) appState.questions = data.questions;
+  if (data.session) appState.session = data.session;
+  if (data.activityLog) appState.activityLog = data.activityLog;
+  if (data.sessionCount !== undefined) appState.sessionCount = data.sessionCount;
+  if (!appState.session.answers) appState.session.answers = [];
+  renderAll();
+}
+
 function load() {
-  const d = localStorage.getItem('buahpintar_v2');
-  if (d) {
-    const saved = JSON.parse(d);
-    // Merge, don't overwrite ws/connected
-    appState.students = saved.students || [];
-    appState.nfcCards = saved.nfcCards || [];
-    appState.questions = saved.questions || [];
-    appState.session = saved.session || appState.session;
-    appState.activityLog = saved.activityLog || [];
-    appState.sessionCount = saved.sessionCount || 0;
-    appState.serverUrl = saved.serverUrl || '';
-    if (!appState.session.answers) appState.session.answers = [];
-  }
-  initDefaultQuestions();
-}
-
-function initDefaultQuestions() {
-  if (appState.questions.length === 0) {
-    const defaults = [
-      {fruitName:'Epal', fruitEmoji:'🍎', correctNFCId:''},
-      {fruitName:'Oren', fruitEmoji:'🍊', correctNFCId:''},
-      {fruitName:'Anggur', fruitEmoji:'🍇', correctNFCId:''},
-      {fruitName:'Pisang', fruitEmoji:'🍌', correctNFCId:''},
-      {fruitName:'Strawberi', fruitEmoji:'🍓', correctNFCId:''},
-      {fruitName:'Mangga', fruitEmoji:'🥭', correctNFCId:''},
-      {fruitName:'Nanas', fruitEmoji:'🍍', correctNFCId:''},
-      {fruitName:'Tembikai', fruitEmoji:'🍉', correctNFCId:''},
-      {fruitName:'Kiwi', fruitEmoji:'🥝', correctNFCId:''},
-      {fruitName:'Ceri', fruitEmoji:'🍒', correctNFCId:''},
-    ];
-    appState.questions = defaults;
-    save();
-  }
+  // Kosongkan — data akan datang dari server via WebSocket
 }
 
 // ============================================================
-// WEBSOCKET / SERVER CONNECTION
+// WEBSOCKET — auto sambung ke server yang sama
 // ============================================================
 function connectWS() {
-  if (!appState.serverUrl) return;
-  const wsUrl = appState.serverUrl.replace('http','ws').replace('https','wss') + '/ws';
-  if (appState.ws) appState.ws.close();
+  // Auto detect URL server (sama dengan domain app)
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const wsUrl = `${proto}://${window.location.host}/ws`;
+
+  if (appState.ws) { try { appState.ws.close(); } catch(e){} }
   appState.ws = new WebSocket(wsUrl);
 
   appState.ws.onopen = () => {
     appState.connected = true;
     updateStatus(true);
     showToast('✅ Berjaya sambung ke pelayan');
+    // Minta data terkini dari server
+    appState.ws.send(JSON.stringify({ type: 'sync_request' }));
   };
   appState.ws.onclose = () => {
     appState.connected = false;
     updateStatus(false);
-    setTimeout(connectWS, 5000);
+    setTimeout(connectWS, 4000);
   };
   appState.ws.onerror = () => {
     appState.connected = false;
@@ -802,16 +797,18 @@ function updateStatus(online) {
 }
 
 // ============================================================
-// HANDLE MESSAGES FROM ESP32 (via server WebSocket)
+// HANDLE MESSAGES FROM SERVER
 // ============================================================
 function handleServerMessage(msg) {
-  console.log('WS msg:', msg);
-  addActivity(msg.type, msg);
-
-  if (msg.type === 'nfc_scan') {
+  console.log("WS msg:", msg.type);
+  if (msg.type === "sync") {
+    applyServerData(msg.data);
+    return;
+  }
+  if (msg.type === "nfc_scan") {
+    addActivity(msg.type, msg);
     handleNFCScan(msg.nfcId, msg.rawData);
-  } else if (msg.type === 'register_students') {
-    // ESP32 sends student list from their NFC scan
+  } else if (msg.type === "register_students") {
     handleRegisterStudents(msg.students);
   }
 }
@@ -1451,51 +1448,17 @@ function showToast(msg) {
   clearTimeout(window._toastTimer);
   window._toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
 }
-
-// ============================================================
-// SERVER URL SETUP
-// ============================================================
-function promptServerUrl() {
-  const url = prompt('Masukkan URL pelayan (contoh: http://192.168.1.100:3000):', appState.serverUrl || 'http://');
-  if (url && url.startsWith('http')) {
-    appState.serverUrl = url.trim().replace(/\/$/, '');
-    save();
-    connectWS();
-  }
-}
-
-// Long press on status to change server URL
-document.getElementById('connStatus').addEventListener('click', promptServerUrl);
-
-// ============================================================
-// SIMULATE ESP32 (for testing without hardware)
-// ============================================================
-function simulateNFC(nfcId) {
-  handleNFCScan(nfcId, {simulated: true});
-}
-
-// Expose for console testing
-window.sim = {
-  nfc: simulateNFC,
-  studentJoin: (nfcId) => {
-    addActivity('nfc_scan', {nfcId});
-    handleNFCScan(nfcId, {});
-  },
-  answer: (nfcId) => {
-    addActivity('nfc_scan', {nfcId});
-    handleNFCScan(nfcId, {});
-  }
-};
+</script>
+</body>
+</html>
 
 // ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Telegram WebApp integration
   if (window.Telegram?.WebApp) {
     const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
+    tg.ready(); tg.expand();
     tg.setHeaderColor('#FF6B35');
     tg.setBackgroundColor('#FFF8F0');
   }
@@ -1503,19 +1466,16 @@ document.addEventListener('DOMContentLoaded', () => {
   load();
   renderAll();
 
-  // Try to reconnect if server URL was saved
-  if (appState.serverUrl) {
-    setTimeout(connectWS, 1000);
-  }
+  // Auto sambung ke server (sama domain)
+  setTimeout(connectWS, 500);
 
-  // Close modals on overlay click
   document.querySelectorAll('.modal-overlay').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target === el) el.classList.remove('show');
     });
   });
 
-  console.log('🍎 BuahPintar loaded! Use window.sim.nfc("ID") to simulate NFC scans');
+  console.log('🍎 BuahPintar v2 — Server sync enabled');
 });
 </script>
 </body>
