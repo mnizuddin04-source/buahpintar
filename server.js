@@ -1,9 +1,6 @@
 /**
- * BuahPintar Backend Server
- * Menerima data dari ESP32 dan hantar ke Telegram Mini App via WebSocket
- * 
- * Jalankan: node server.js
- * Port: 3000
+ * BuahPintar Backend Server v2
+ * Data disimpan dalam server — sync ke semua device
  */
 
 const http = require('http');
@@ -12,12 +9,60 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
+const DATA_FILE = path.join(__dirname, 'data.json');
 
 // ============================================================
-// HTTP SERVER (serve index.html + handle ESP32 API)
+// DATA STORE
+// ============================================================
+let store = {
+  students: [],
+  nfcCards: [],
+  questions: initDefaultQuestions(),
+  session: {
+    active: false, currentQ: 0, currentStudentIdx: 0,
+    studentOrder: [], answers: [],
+  },
+  activityLog: [],
+  sessionCount: 0,
+};
+
+function initDefaultQuestions() {
+  return [
+    {fruitName:'Epal', fruitEmoji:'🍎', correctNFCId:''},
+    {fruitName:'Oren', fruitEmoji:'🍊', correctNFCId:''},
+    {fruitName:'Anggur', fruitEmoji:'🍇', correctNFCId:''},
+    {fruitName:'Pisang', fruitEmoji:'🍌', correctNFCId:''},
+    {fruitName:'Strawberi', fruitEmoji:'🍓', correctNFCId:''},
+    {fruitName:'Mangga', fruitEmoji:'🥭', correctNFCId:''},
+    {fruitName:'Nanas', fruitEmoji:'🍍', correctNFCId:''},
+    {fruitName:'Tembikai', fruitEmoji:'🍉', correctNFCId:''},
+    {fruitName:'Kiwi', fruitEmoji:'🥝', correctNFCId:''},
+    {fruitName:'Ceri', fruitEmoji:'🍒', correctNFCId:''},
+  ];
+}
+
+function loadData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const saved = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      store = { ...store, ...saved };
+      if (!store.questions || store.questions.length === 0) store.questions = initDefaultQuestions();
+      console.log('[Data] Loaded');
+    }
+  } catch (e) { console.log('[Data] Fresh start'); }
+}
+
+function saveData() {
+  try { fs.writeFileSync(DATA_FILE, JSON.stringify(store, null, 2)); }
+  catch (e) { console.log('[Data] Save error:', e.message); }
+}
+
+loadData();
+
+// ============================================================
+// HTTP SERVER
 // ============================================================
 const server = http.createServer((req, res) => {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -25,181 +70,98 @@ const server = http.createServer((req, res) => {
 
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
-  // ── Serve Telegram Mini App
   if (url.pathname === '/' || url.pathname === '/index.html') {
     const filePath = path.join(__dirname, 'index.html');
     fs.readFile(filePath, (err, data) => {
       if (err) { res.writeHead(404); res.end('Not found'); return; }
       res.setHeader('Content-Type', 'text/html');
-      res.writeHead(200);
-      res.end(data);
+      res.writeHead(200); res.end(data);
     });
     return;
   }
 
-  // ── ESP32 POST: NFC Scan
-  // ESP32 hantar: POST /api/nfc
-  // Body: { "nfcId": "A1B2C3D4", "type": "scan" }
   if (url.pathname === '/api/nfc' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        console.log('[ESP32] NFC Scan:', data);
-
-        // Broadcast ke semua Telegram Mini App clients
-        broadcast({
-          type: 'nfc_scan',
-          nfcId: data.nfcId || data.id || '',
-          rawData: data,
-          ts: Date.now(),
-        });
-
+        broadcast({ type: 'nfc_scan', nfcId: data.nfcId || '', rawData: data, ts: Date.now() });
         res.setHeader('Content-Type', 'application/json');
-        res.writeHead(200);
-        res.end(JSON.stringify({ ok: true, message: 'NFC received' }));
-      } catch (e) {
-        res.writeHead(400);
-        res.end(JSON.stringify({ ok: false, error: 'Bad JSON' }));
-      }
+        res.writeHead(200); res.end(JSON.stringify({ ok: true }));
+      } catch (e) { res.writeHead(400); res.end('{}'); }
     });
     return;
   }
 
-  // ── ESP32 POST: Register Students (scan player mode)
-  // ESP32 hantar: POST /api/students
-  // Body: { "students": [{"id":"12345","name":"Ahmad"},{"id":"67890","name":"Ali"},...] }
   if (url.pathname === '/api/students' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        console.log('[ESP32] Register Students:', data);
-
-        broadcast({
-          type: 'register_students',
-          students: data.students || [],
-          ts: Date.now(),
-        });
-
+        broadcast({ type: 'register_students', students: data.students || [], ts: Date.now() });
         res.setHeader('Content-Type', 'application/json');
-        res.writeHead(200);
-        res.end(JSON.stringify({ ok: true, count: (data.students || []).length }));
-      } catch (e) {
-        res.writeHead(400);
-        res.end(JSON.stringify({ ok: false, error: 'Bad JSON' }));
-      }
+        res.writeHead(200); res.end(JSON.stringify({ ok: true }));
+      } catch (e) { res.writeHead(400); res.end('{}'); }
     });
     return;
   }
 
-  // ── ESP32 POST: Answer Result (ESP32 check sendiri)
-  // Body: { "studentId": "12345", "qIndex": 0, "correct": true, "fruitName": "Epal" }
-  if (url.pathname === '/api/answer' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        console.log('[ESP32] Answer:', data);
-
-        broadcast({
-          type: 'answer',
-          studentId: data.studentId,
-          qIndex: data.qIndex,
-          correct: data.correct,
-          fruitName: data.fruitName,
-          scannedNFC: data.scannedNFC || '',
-          ts: Date.now(),
-        });
-
-        res.setHeader('Content-Type', 'application/json');
-        res.writeHead(200);
-        res.end(JSON.stringify({ ok: true }));
-      } catch (e) {
-        res.writeHead(400);
-        res.end(JSON.stringify({ ok: false }));
-      }
-    });
-    return;
-  }
-
-  // ── Health Check
   if (url.pathname === '/api/health') {
     res.setHeader('Content-Type', 'application/json');
     res.writeHead(200);
-    res.end(JSON.stringify({ ok: true, clients: wss.clients.size, uptime: process.uptime() }));
+    res.end(JSON.stringify({ ok: true, clients: wss.clients.size, students: store.students.length }));
     return;
   }
 
-  res.writeHead(404);
-  res.end('Not Found');
+  res.writeHead(404); res.end('Not Found');
 });
 
 // ============================================================
-// WEBSOCKET SERVER
+// WEBSOCKET — sync data semua device
 // ============================================================
 const wss = new WebSocketServer({ server, path: '/ws' });
 
-wss.on('connection', (ws, req) => {
-  console.log(`[WS] Client sambung dari ${req.socket.remoteAddress}`);
+wss.on('connection', (ws) => {
+  console.log('[WS] Client sambung. Total:', wss.clients.size);
 
-  ws.send(JSON.stringify({
-    type: 'connected',
-    message: 'Selamat datang ke BuahPintar Server!',
-    ts: Date.now(),
-  }));
+  // Hantar data terkini kepada client baru
+  ws.send(JSON.stringify({ type: 'sync', data: store }));
 
-  ws.on('message', (data) => {
-    // Mini App boleh hantar mesej ke server (optional)
+  ws.on('message', (raw) => {
     try {
-      const msg = JSON.parse(data.toString());
-      console.log('[WS] Dari Mini App:', msg);
+      const msg = JSON.parse(raw.toString());
+
+      if (msg.type === 'update') {
+        // Simpan data dari client
+        if (msg.key && msg.value !== undefined) {
+          store[msg.key] = msg.value;
+          saveData();
+          // Broadcast ke semua client lain
+          broadcastExcept(ws, { type: 'sync', data: store });
+          console.log('[WS] Updated:', msg.key);
+        }
+      } else if (msg.type === 'sync_request') {
+        ws.send(JSON.stringify({ type: 'sync', data: store }));
+      }
+
     } catch (e) {}
   });
 
-  ws.on('close', () => {
-    console.log('[WS] Client disconnect');
-  });
+  ws.on('close', () => console.log('[WS] Client disconnect'));
 });
 
 function broadcast(msg) {
   const str = JSON.stringify(msg);
-  wss.clients.forEach(client => {
-    if (client.readyState === 1) { // OPEN
-      client.send(str);
-    }
-  });
-  console.log(`[WS] Broadcast kepada ${wss.clients.size} clients:`, msg.type);
+  wss.clients.forEach(c => { if (c.readyState === 1) c.send(str); });
 }
 
-// ============================================================
-// START
-// ============================================================
-server.listen(PORT, '0.0.0.0', () => {
-  console.log('');
-  console.log('╔══════════════════════════════════════╗');
-  console.log('║   🍎  BuahPintar Server Running      ║');
-  console.log(`║   Port: ${PORT}                         ║`);
-  console.log('╚══════════════════════════════════════╝');
-  console.log('');
-  console.log(`📱 Telegram Mini App: http://YOUR_IP:${PORT}`);
-  console.log(`🔌 WebSocket:         ws://YOUR_IP:${PORT}/ws`);
-  console.log(`📡 ESP32 NFC API:     POST http://YOUR_IP:${PORT}/api/nfc`);
-  console.log(`👥 ESP32 Students:    POST http://YOUR_IP:${PORT}/api/students`);
-  console.log(`✅ ESP32 Answer:      POST http://YOUR_IP:${PORT}/api/answer`);
-  console.log('');
+function broadcastExcept(sender, msg) {
+  const str = JSON.stringify(msg);
+  wss.clients.forEach(c => { if (c !== sender && c.readyState === 1) c.send(str); });
+}
 
-  // Show local IP
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === 'IPv4' && !net.internal) {
-        console.log(`🌐 IP Tempatan: http://${net.address}:${PORT}`);
-      }
-    }
-  }
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🍎 BuahPintar Server v2 — Port ${PORT}\n`);
 });
